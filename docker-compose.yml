@@ -1,0 +1,71 @@
+version: '3.8'
+
+networks:
+  laravel:
+    driver: bridge
+    name: laravel-network
+
+services:
+
+  nginx:
+    image: nginx:alpine
+    command: nginx -g "daemon off;"
+    container_name: nginx-laravel
+    ports:
+      - "8000:80"
+    volumes:
+      - ./src:/var/www
+      - ./nginx/conf.d/:/etc/nginx/conf.d/
+    depends_on:
+      - php
+      - db
+    networks:
+      - laravel
+
+  db:
+    image: mysql:5.7.22
+    container_name: mysql-laravel
+    restart: unless-stopped
+    tty: true
+    volumes:
+      - ./mysql/data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    networks:
+      - laravel
+
+  php:
+    image: php-laravel
+    container_name: app-laravel
+    build:
+      context: ./php
+      dockerfile: Dockerfile
+    volumes:
+      - ./src:/var/www
+    ports:
+      - "9000:9000"
+    networks:
+      - laravel
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name : phpmyadmin-laravel
+    restart: unless-stopped
+    environment:
+      PMA_PORT: 3306
+      PMA_HOST: db
+      PMA_USER: ${MYSQL_USER}
+      PMA_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - "8001:80"
+    depends_on:
+      - db
+    networks:
+      - laravel
